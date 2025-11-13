@@ -1,0 +1,14 @@
+# Node dependencies
+node_modules/
+
+# Environment files
+.env
+
+# Prisma generated files (client)
+prisma/generated/
+src/generated/
+src/generated/prisma/
+
+# Build outputs (if you build TS)
+dist/
+build/
