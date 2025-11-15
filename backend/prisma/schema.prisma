@@ -7,32 +7,69 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum MsgStatus {
+  pending
+  sent
+  delivered
+  read
+}
+
 model User {
-  id        Int       @id @default(autoincrement())
-  username  String    @unique
+  id        String       @id @default(uuid())
+  username  String?
+  phone     String    @unique
   email     String?   @unique
-  phone     String?   @unique
   password  String
+  profilePic String?
+  about     String?
+  isOnline  Boolean   @default(false)
+  lastSeen  DateTime?
   createdAt DateTime  @default(now())
-  chats     Chat[]    @relation("ChatParticipants")
-  messages  Message[]
+  updatedAt DateTime  @updatedAt
+  chats     Chat[]            @relation("ChatParticipants")
+  messages  Message[]        
+  readStatuses ChatReadStatus[]
 }
 
 model Chat {
-  id           Int       @id @default(autoincrement())
+  id           String       @id @default(uuid())
   name         String?
   isGroup      Boolean   @default(false)
+  groupPic     String?
   createdAt    DateTime  @default(now())
-  participants User[]    @relation("ChatParticipants")
+  updatedAt    DateTime  @updatedAt
+
+  participants User[]     @relation("ChatParticipants")
   messages     Message[]
+  readStatuses ChatReadStatus[] 
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  content   String
+  id         String       @id @default(uuid())
+  content    String
+  createdAt  DateTime  @default(now())
+  chatId     String
+  senderId   String
+  chat       Chat      @relation(fields: [chatId], references: [id])
+  sender     User      @relation(fields: [senderId], references: [id])
+  status     MsgStatus @default(pending)
+}
+
+model ChatReadStatus {
+  id                String       @id @default(uuid())
+  chatId            String
+  userId            String
+  lastSeenMessageId String?     
+  updatedAt         DateTime @updatedAt
+  chat Chat @relation(fields: [chatId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  @@unique([chatId, userId]) 
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  chatId    Int
-  senderId  Int
-  chat      Chat     @relation(fields: [chatId], references: [id])
-  sender    User     @relation(fields: [senderId], references: [id])
 }

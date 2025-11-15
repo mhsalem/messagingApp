@@ -1,0 +1,31 @@
+app = "your-app-name"  # Make sure this is unique
+
+[build]
+  # Use the standard Node.js builder
+  builder = "heroku/buildpacks:20"
+
+[http_service]
+  internal_port = 5000  # Must match your app's listening port
+  force_https = true    # Good for security
+
+  [[http_service.checks]]
+    grace_period = "5s"
+    interval = "10s"
+    method = "GET"
+    path = "/health"    # Create this endpoint in your app
+    timeout = "2s"
+
+# If you need build arguments, define them as a simple key-value map
+# [build.args]
+#   NODE_ENV = "production"
+
+# Configuration for your VM
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+# Mount for your SQLite database
+[mounts]
+  source = "sqlite_data"
+  destination = "/data"
