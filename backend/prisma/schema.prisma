@@ -18,7 +18,7 @@ model User {
   id        String       @id @default(uuid())
   username  String?
   phone     String    @unique
-  email     String?   @unique
+  email     String   @unique
   password  String
   profilePic String?
   about     String?
@@ -68,7 +68,7 @@ model ChatReadStatus {
 
 model OTP {
   id        String   @id @default(uuid())
-  phone     String
+  email     String
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
