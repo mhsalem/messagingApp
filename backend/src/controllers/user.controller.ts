@@ -392,3 +392,153 @@ export const verifyOtp = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Server error", details: error });
   }
 };
+
+/**
+ * @swagger
+ * /resetPassword:
+ *   post:
+ *     summary: Reset password using OTP
+ *     tags: [Authentication]
+ *     description: Validates OTP and allows the user to set a new password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "newStrongPassword123"
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired OTP
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const email = String(req.body.email);
+    const otp = String(req.body.otp);
+    const newPassword = String(req.body.newPassword);
+
+    if (!email || !otp || !newPassword)
+      return res.status(400).json({ error: "Missing data" });
+
+    const record = await prisma.oTP.findFirst({ where: { email, code: otp } });
+
+    if (!record)
+      return res.status(400).json({ error: "Invalid code" });
+
+    if (record.expiresAt < new Date())
+      return res.status(400).json({ error: "OTP expired" });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user)
+      return res.status(404).json({ error: "User not found" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashed },
+    });
+
+    await prisma.oTP.deleteMany({ where: { id: record.id } });
+
+    return res.status(200).json({ msg: "Password reset successful." });
+
+  } catch (error) {
+    return res.status(500).json({ error: "Server error", details: error });
+  }
+};
+
+
+/**
+ * @swagger
+ * /forgotPassword:
+ *   post:
+ *     summary: Send OTP to user's email for password reset
+ *     tags: [Authentication]
+ *     description: Sends a 6-digit OTP to the user's email so they can reset their password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: OTP sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "OTP sent to your email"
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const email = String(req.body.email || "").toLowerCase().trim();
+
+    if (!email) return res.status(400).json({ error: "Email required" });
+
+    // Check that user exists
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Generate OTP
+    const code = generateOtp();
+
+    // Delete old OTPs
+    await prisma.oTP.deleteMany({ where: { email } });
+
+    // Save new OTP
+    await prisma.oTP.create({
+      data: {
+        email,
+        code,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+    });
+
+    // In production: send email
+    // await transporter.sendMail(...)
+
+    return res.status(200).json({ msg: "OTP sent to your email", debugOtp: code });
+
+  } catch (error) {
+    return res.status(500).json({ error: "Server error", details: error });
+  }
+};
+
+
