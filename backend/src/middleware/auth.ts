@@ -1,30 +1,43 @@
 import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import prisma from "../db";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
+const JWT_SECRET = String(process.env.JWT_SECRET || "");
 
-interface TokenPayload extends JwtPayload {
-  userId: number;
+interface TokenPayload {
+  userId?: string;
 }
 
-export const auth = (req: Request, res: Response, next: NextFunction) => {
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: "Missing Authorization header" });
+    const header = String(req.headers.authorization || "");
+    if (!header) return res.status(401).json({ message: "Missing Authorization header" });
+
+    const parts = header.split(" ");
+    if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
+      return res.status(401).json({ message: "Invalid Authorization format. Use: Bearer <token>" });
     }
 
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      return res.status(401).json({ message: "Invalid Authorization format" });
+    const token = parts[1];
+    let payload: TokenPayload;
+    try {
+      payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    if (!payload?.userId) return res.status(401).json({ message: "Token missing userId" });
 
-    (req as any).user = decoded;
+    
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, },
+    });
+    if (!user) return res.status(401).json({ message: "User not found" });
 
+    (req as any).user = { userId: user.id };
     next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid or expired token", details: err });
   }
 };

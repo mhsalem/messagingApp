@@ -3,6 +3,7 @@ import prisma from "../db";
 import bcrypt from "bcryptjs";
 import { transporter } from "../config/email";
 import jwt from "jsonwebtoken";
+const JWT_SECRET = String(process.env.JWT_SECRET);
 
 // ---------- OTP GENERATOR ----------
 /**
@@ -79,12 +80,9 @@ export function generateOtp() {
  *           type: string
  *           example: "Detailed error information"
  */
-function createToken(id: string, email: string) {
-  return jwt.sign(
-    { id, email },
-    String(process.env.JWT_SECRET),
-    { expiresIn: "7d" }
-  );
+
+export function createToken(userId: string, email?: string, tokenVersion = 0) {
+  return jwt.sign({ userId, email, tokenVersion }, JWT_SECRET, { expiresIn: "7d" });
 }
 
 // ---------- REGISTER ----------

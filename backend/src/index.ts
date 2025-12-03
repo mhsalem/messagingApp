@@ -8,6 +8,7 @@ import { setupSwagger } from "./swagger";
 import msgsRouter from "./routes/msgs.routes";
 import userRouter from "./routes/user.routes";
 import chatRouter from "./routes/chat.routes";
+import profileRouter from "./routes/profile.routes";
 import path from "path";
 import { auth } from "./middleware/auth";
 
@@ -27,8 +28,9 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use("/chat" ,auth, chatRouter);
+app.use("/chats" ,auth, chatRouter);
 app.use("/msgs" ,auth, msgsRouter);
+app.use("/profile" ,auth, profileRouter);
 app.use("/",userRouter);
 setupSwagger(app);
 
